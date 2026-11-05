@@ -1,0 +1,48 @@
+# ---------------------------------------------------------------------------
+# Build output and tooling
+# ---------------------------------------------------------------------------
+build/
+.gradle/
+run/
+out/
+bin/
+*.log
+hs_err_pid*
+
+# Gradle: keep the wrapper (jar included), ignore everything else it generates
+!gradle/wrapper/gradle-wrapper.jar
+.kotlin/
+
+# ---------------------------------------------------------------------------
+# IDEs / editors
+# ---------------------------------------------------------------------------
+.idea/
+*.iml
+*.ipr
+*.iws
+.vscode/
+.classpath
+.project
+.settings/
+*.swp
+.DS_Store
+
+# ---------------------------------------------------------------------------
+# Third-party jars: never commit them.
+# The Villager Trading Predictor jar is all-rights-reserved software that this
+# project only reads at compile time (see README); built mod jars are release
+# artifacts, not source.
+# ---------------------------------------------------------------------------
+*.jar
+!gradle/wrapper/gradle-wrapper.jar
+VTP-*.jar
+
+# Release notes are text and ARE versioned (releases/*.md, CHANGELOG.md);
+# only binaries dropped next to them are ignored.
+releases/*.jar
+releases/*.zip
+
+# Local sandbox / agent markers and scratch files
+.ai-jail
+.claude/
+*.tmp

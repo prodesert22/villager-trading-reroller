@@ -1,0 +1,27 @@
+{
+  "schemaVersion": 1,
+  "id": "villager-trading-reroller",
+  "version": "${version}",
+  "name": "Villager Trading Reroller",
+  "description": "Companion for Villager Trading Predictor: prediction-guided, closed-loop villager rerolling with a pool of parallel burner villagers.",
+  "authors": [
+    "Pedro Antonio Trindade"
+  ],
+  "license": "MIT",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "dev.pedro.vprng.VprngClient"
+    ]
+  },
+  "mixins": [
+    "vprng.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~${minecraft}",
+    "java": ">=25",
+    "fabric-api": "*",
+    "villager-trading-predictor": "~1.3"
+  }
+}

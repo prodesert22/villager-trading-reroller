@@ -1,0 +1,102 @@
+plugins {
+    id 'net.fabricmc.fabric-loom' version '1.19.3'
+}
+
+version = project.mod_version
+group = project.maven_group
+base.archivesName = project.archives_base_name
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+    withSourcesJar()
+}
+
+tasks.withType(JavaCompile).configureEach { options.release = 25 }
+
+// ---------------------------------------------------------------------------
+// Villager Trading Predictor (compile-time only).
+// We never copy or ship VTP code: the nested implementation jar is extracted into
+// build/ purely so javac can resolve the public classes we call from VtpBridge.
+// ---------------------------------------------------------------------------
+def vtpOuterJar = layout.projectDirectory.file(project.vtp_jar)
+def vtpNestedName = "vtp-${project.minecraft_version}.jar"
+def vtpDir = layout.buildDirectory.dir('vtp')
+
+tasks.register('extractVtp', Copy) {
+    description = 'Extracts the nested VTP implementation jar for compile-only use.'
+    inputs.file(vtpOuterJar)
+    from(zipTree(vtpOuterJar)) {
+        include "META-INF/jars/${vtpNestedName}"
+        eachFile { it.path = it.name }
+        includeEmptyDirs = false
+    }
+    into vtpDir
+    doFirst {
+        if (!vtpOuterJar.asFile.exists()) {
+            throw new GradleException("Missing ${project.vtp_jar} in the project root (download it from CurseForge).")
+        }
+    }
+}
+
+dependencies {
+    // Unobfuscated Minecraft (26.x): official names, no mappings.
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    implementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    implementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    compileOnly files(vtpDir.map { it.file(vtpNestedName) })
+
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.13.4'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.13.4'
+}
+
+tasks.named('compileJava') { dependsOn 'extractVtp' }
+
+// Ship the MIT license inside the jar (Fabric template convention).
+tasks.named('jar') {
+    inputs.property 'archivesName', project.base.archivesName
+    from('LICENSE') {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}
+
+processResources {
+    inputs.property 'version', project.version
+    inputs.property 'minecraft', project.minecraft_version
+    filesMatching('fabric.mod.json') {
+        expand(version: project.version, minecraft: project.minecraft_version)
+    }
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
+
+// ---------------------------------------------------------------------------
+// Release notes gate: a version cannot be built/checked without its notes.
+//   - releases/<version>.md  : the detailed notes of that release
+//   - CHANGELOG.md           : a "## [<version>]" heading with the summary
+// See releases/README.md for the workflow.
+// ---------------------------------------------------------------------------
+tasks.register('verifyReleaseNotes') {
+    group = 'verification'
+    description = 'Fails if the current version has no releases/<version>.md or CHANGELOG.md entry.'
+    def versionName = project.version.toString()
+    def notes = layout.projectDirectory.file("releases/${versionName}.md").asFile
+    def changelog = layout.projectDirectory.file('CHANGELOG.md').asFile
+    outputs.upToDateWhen { false }
+    doLast {
+        if (!notes.exists()) {
+            throw new GradleException("Missing release notes: releases/${versionName}.md (see releases/README.md)")
+        }
+        if (!changelog.exists() || !changelog.text.contains("## [${versionName}]")) {
+            throw new GradleException("CHANGELOG.md has no '## [${versionName}]' entry (see releases/README.md)")
+        }
+    }
+}
+tasks.named('check') { dependsOn 'verifyReleaseNotes' }
+
+// Dev client: load the real VTP (outer universal jar, so Fabric picks the matching nested impl).
+tasks.named('runClient') {
+    systemProperty 'fabric.addMods', vtpOuterJar.asFile.absolutePath
+}
